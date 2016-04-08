@@ -3,6 +3,9 @@ defaults:
     request_headers:
         x-auth-token: $ENVIRON['SERVICE_TOKEN']
 
+# NOTE(cdent): The use of complex JSONPath to determine URLs is bad
+# for readability. 
+
 tests:
 
 - name: retrieve root

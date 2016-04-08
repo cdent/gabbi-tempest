@@ -1,0 +1,34 @@
+
+defaults:
+    request_headers:
+        x-auth-token: $ENVIRON['SERVICE_TOKEN']
+
+# NOTE(cdent): The use of complex JSONPath to determine URLs is bad
+# for readability. 
+
+tests:
+
+- name: retrieve root
+  GET: /
+  status: 300
+
+- name: choose current api
+  desc: apparently the /v2/ url is a 404, despite being right there in discovery
+  xfail: true
+  GET: $RESPONSE['$.versions[?status = "CURRENT"].links[?rel = "self"].href']
+
+- name: get images
+  GET: /v2/images
+  
+- name: get one image
+  GET: $RESPONSE['$.images[0].self']
+  response_json_paths:
+      $.status: active
+      $.schema: /v2/schemas/image
+
+- name: get the schema
+  GET: $RESPONSE['$.schema']
+  response_json_paths:
+      $.name: image
+
+# TODO(cdent): add some images

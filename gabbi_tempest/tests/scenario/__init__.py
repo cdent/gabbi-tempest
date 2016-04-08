@@ -20,18 +20,19 @@ import tempest.test
 
 CONF = config.CONF
 
-
 class GenericGabbiTest(tempest.test.BaseTestCase):
-    credentials = ['admin']
-    # NOTE(cdent): WTF? 'nova' being the thing in service_available?
-    # Boo!
-    service_name = 'nova'
-    service_type = 'compute'
+    credentials = []
+    service_name = None
+    service_type = None
 
     @classmethod
     def skip_checks(cls):
         service = cls.service_name
         super(GenericGabbiTest, cls).skip_checks()
+        if not service:
+            # FIXME(cdent): Hack to work around discoverability
+            # weirdness
+            raise cls.skipException('skipping the base class fake test')
         if not CONF.service_available.get(service):
             raise cls.skipException('%s support is required' % service)
 
@@ -46,16 +47,15 @@ class GenericGabbiTest(tempest.test.BaseTestCase):
         if parsed_url.port:
             port = parsed_url.port
 
-        test_dir = os.path.join(os.path.dirname(__file__), 'gabbits')
+        test_dir = os.path.join(os.path.dirname(__file__), 'gabbits',
+                                cls.service_type)
         cls.tests = driver.build_tests(
             test_dir, unittest.TestLoader(),
             host=host, port=port, prefix=prefix,
-            test_loader_name='tempest.scenario.gabbi')
+            test_loader_name='tempest.scenario.%s.%s' % (
+                cls.__name__, cls.service_type))
 
         os.environ["SERVICE_TOKEN"] = token
-        # TODO(cdent): not very generic!
-        os.environ['IMAGE_REF'] = CONF.compute.image_ref
-        os.environ['FLAVOR_REF'] = CONF.compute.flavor_ref
 
     @classmethod
     def clear_credentials(cls):
@@ -88,3 +88,24 @@ class GenericGabbiTest(tempest.test.BaseTestCase):
         # NOTE(sileht): A fake test is needed to have the class loaded
         # by the test runner
         pass
+
+
+class NovaGabbiTest(GenericGabbiTest):
+    credentials = ['admin']
+    # NOTE(cdent): WTF? 'nova' being the thing in service_available?
+    # Boo!
+    service_name = 'nova'
+    service_type = 'compute'
+
+    @classmethod
+    def resource_setup(cls):
+        super(NovaGabbiTest, cls).resource_setup()
+        # TODO(cdent): not very generic!
+        os.environ['IMAGE_REF'] = CONF.compute.image_ref
+        os.environ['FLAVOR_REF'] = CONF.compute.flavor_ref
+
+
+class GlanceGabbiTest(GenericGabbiTest):
+    credentials = ['admin']
+    service_name = 'glance'
+    service_type = 'image'
