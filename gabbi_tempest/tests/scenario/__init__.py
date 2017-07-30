@@ -46,10 +46,17 @@ class GenericGabbiTest(tempest.test.BaseTestCase):
             name = '%s_SERVICE' % service_type.upper()
             os.environ[name] = url
 
+        if cls.service_type in endpoints:
+            host = None
+            url = endpoints[cls.service_type]
+        else:
+            host = 'stub'
+            url = None
+
         test_dir = os.path.join(os.path.dirname(__file__), 'gabbits',
                                 cls.service_type)
         cls.tests = driver.build_tests(
-            test_dir, unittest.TestLoader(), host='stub',
+            test_dir, unittest.TestLoader(), host=host, url=url,
             test_loader_name='tempest.scenario.%s.%s' % (
                 cls.__name__, cls.service_type))
 

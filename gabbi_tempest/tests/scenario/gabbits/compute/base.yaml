@@ -9,21 +9,21 @@ defaults:
 tests:
 
 - name: retrieve root
-  GET: $ENVIRON['COMPUTE_SERVICE']/
+  GET: /
   response_json_paths:
       # $NETLOC contains the /v2.1 prefix
       $.version.links[?rel = "self"].href: /$ENVIRON['COMPUTE_SERVICE']/
       $.version.status: CURRENT
 
 - name: retrieve empty servers
-  GET: $ENVIRON['COMPUTE_SERVICE']/servers
+  GET: /servers
   response_json_paths:
       $.servers: []
 
 - name: try bad accept
   desc: https://bugs.launchpad.net/nova/+bug/1567966
   xfail: True
-  GET: $ENVIRON['COMPUTE_SERVICE']/servers
+  GET: /servers
   request_headers:
       accept: text/plain
   status: 406
@@ -31,20 +31,20 @@ tests:
 - name: try bad method
   desc: https://bugs.launchpad.net/nova/+bug/1567970
   xfail: True
-  DELETE: $ENVIRON['COMPUTE_SERVICE']/servers
+  DELETE: /servers
   status: 405
 
 - name: post bad content-type
   desc: https://bugs.launchpad.net/nova/+bug/1567977
   xfail: True
-  POST: $ENVIRON['COMPUTE_SERVICE']/servers
+  POST: /servers
   request_headers:
       content-type: text/plain
   data: I want a server so badly
   status: 415
 
 - name: create server
-  POST: $ENVIRON['COMPUTE_SERVICE']/servers
+  POST: /servers
   request_headers:
       content-type: application/json
   data:
@@ -68,7 +68,7 @@ tests:
 
 # bookmark link, whatever it is, is busted. Goes to bad version
 # - name: get bookmark
-#   GET: $ENVIRON['COMPUTE_SERVICE']/$RESPONSE['$.server.links[?rel = "bookmark"].href']
+#   GET: $RESPONSE['$.server.links[?rel = "bookmark"].href']
 
 - name: get server
   GET: $RESPONSE['$.server.links[?rel = "self"].href']
