@@ -14,6 +14,7 @@ import os
 import unittest
 
 from gabbi import driver
+from gabbi.handlers import jsonhandler
 import six.moves.urllib.parse as urlparse
 from tempest import config
 import tempest.test
@@ -39,23 +40,20 @@ class GenericGabbiTest(tempest.test.BaseTestCase):
     @classmethod
     def resource_setup(cls):
         super(GenericGabbiTest, cls).resource_setup()
-        url, token = cls._get_service_auth()
-        parsed_url = urlparse.urlsplit(url)
-        prefix = parsed_url.path.rstrip('/')  # turn it into a prefix
-        port = 443 if parsed_url.scheme == 'https' else 80
-        host = parsed_url.hostname
-        if parsed_url.port:
-            port = parsed_url.port
+        endpoints, token = cls._get_service_auth([cls.service_type])
+
+        for service_type, url in endpoints.items():
+            name = '%s_SERVICE' % service_type.upper()
+            os.environ[name] = url
 
         test_dir = os.path.join(os.path.dirname(__file__), 'gabbits',
                                 cls.service_type)
         cls.tests = driver.build_tests(
-            test_dir, unittest.TestLoader(),
-            host=host, port=port, prefix=prefix,
+            test_dir, unittest.TestLoader(), host='stub',
             test_loader_name='tempest.scenario.%s.%s' % (
                 cls.__name__, cls.service_type))
 
-        os.environ["SERVICE_TOKEN"] = token
+        os.environ['SERVICE_TOKEN'] = token
 
     @classmethod
     def clear_credentials(cls):
@@ -74,15 +72,20 @@ class GenericGabbiTest(tempest.test.BaseTestCase):
             self.tearDown()
 
     @classmethod
-    def _get_service_auth(cls):
-        endpoint_type = 'publicURL'
-
+    def _get_service_auth(cls, service_types):
+        interface = 'public'
         auth = cls.os_admin.auth_provider.get_auth()
-        endpoints = [e for e in auth[1]['serviceCatalog']
-                     if e['type'] == cls.service_type]
-        if not endpoints:
-            raise Exception("%s endpoint not found" % cls.service_type)
-        return endpoints[0]['endpoints'][0][endpoint_type], auth[0]
+        token = auth[0]
+        catalog = auth[1]['catalog']
+
+        endpoints = {}
+        for service_type in service_types:
+            result = jsonhandler.JSONHandler.extract_json_path_value(catalog,
+                '$[?type = "%s"].endpoints[?interface = "%s"].url' %
+                (service_type, interface))
+            endpoints[service_type] = result
+
+        return endpoints, token
 
     def test_fake(self):
         # NOTE(sileht): A fake test is needed to have the class loaded

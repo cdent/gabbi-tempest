@@ -9,7 +9,7 @@ defaults:
 tests:
 
 - name: retrieve root
-  GET: /
+  GET: $ENVIRON['IMAGE_SERVICE']/
   status: 300
 
 - name: choose current api
@@ -18,16 +18,16 @@ tests:
   GET: $RESPONSE['$.versions[?status = "CURRENT"].links[?rel = "self"].href']
 
 - name: get images
-  GET: /v2/images
+  GET: $ENVIRON['IMAGE_SERVICE']/v2/images
   
 - name: get one image
-  GET: $RESPONSE['$.images[0].self']
+  GET: $ENVIRON['IMAGE_SERVICE']$RESPONSE['$.images[0].self']
   response_json_paths:
       $.status: active
       $.schema: /v2/schemas/image
 
 - name: get the schema
-  GET: $RESPONSE['$.schema']
+  GET: $ENVIRON['IMAGE_SERVICE']$RESPONSE['$.schema']
   response_json_paths:
       $.name: image
 
