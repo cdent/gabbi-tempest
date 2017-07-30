@@ -40,11 +40,13 @@ class GenericGabbiTest(tempest.test.BaseTestCase):
     @classmethod
     def resource_setup(cls):
         super(GenericGabbiTest, cls).resource_setup()
-        endpoints, token = cls._get_service_auth([cls.service_type])
+        endpoints, token = cls._get_service_auth()
 
+        # Set test ENVIRON substitutions.
         for service_type, url in endpoints.items():
             name = '%s_SERVICE' % service_type.upper()
             os.environ[name] = url
+        os.environ['SERVICE_TOKEN'] = token
 
         if cls.service_type in endpoints:
             host = None
@@ -59,8 +61,6 @@ class GenericGabbiTest(tempest.test.BaseTestCase):
             test_dir, unittest.TestLoader(), host=host, url=url,
             test_loader_name='tempest.scenario.%s.%s' % (
                 cls.__name__, cls.service_type))
-
-        os.environ['SERVICE_TOKEN'] = token
 
     @classmethod
     def clear_credentials(cls):
@@ -79,20 +79,21 @@ class GenericGabbiTest(tempest.test.BaseTestCase):
             self.tearDown()
 
     @classmethod
-    def _get_service_auth(cls, service_types):
+    def _get_service_auth(cls):
         interface = 'public'
         auth = cls.os_admin.auth_provider.get_auth()
         token = auth[0]
         catalog = auth[1]['catalog']
 
-        endpoints = {}
-        for service_type in service_types:
-            result = jsonhandler.JSONHandler.extract_json_path_value(catalog,
-                '$[?type = "%s"].endpoints[?interface = "%s"].url' %
-                (service_type, interface))
-            endpoints[service_type] = result
+        endpoint_lookup = {}
+        for entry in catalog:
+            service_type = entry['type']
+            endpoints = entry['endpoints']
+            for endpoint in endpoints:
+                if endpoint['interface'] == interface:
+                    endpoint_lookup[service_type] = endpoint['url']
 
-        return endpoints, token
+        return endpoint_lookup, token
 
     def test_fake(self):
         # NOTE(sileht): A fake test is needed to have the class loaded
