@@ -46,6 +46,8 @@ class GenericGabbiTest(tempest.test.BaseTestCase):
         for service_type, url in endpoints.items():
             name = '%s_SERVICE' % service_type.upper()
             os.environ[name] = url
+            name = '%s_BASE' % service_type.upper()
+            os.environ[name] = '://'.join(urlparse.urlparse(url)[0:2])
         os.environ['SERVICE_TOKEN'] = token
 
         if cls.service_type in endpoints:
@@ -120,3 +122,9 @@ class GlanceGabbiTest(GenericGabbiTest):
     credentials = ['admin']
     service_name = 'glance'
     service_type = 'image'
+
+
+class PlacementNovaGabbiTest(GenericGabbiTest):
+    credentials = ['admin']
+    service_name = 'nova'
+    service_type = 'multi'

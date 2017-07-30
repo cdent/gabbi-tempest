@@ -1,0 +1,26 @@
+
+defaults:
+    request_headers:
+        x-auth-token: $ENVIRON['SERVICE_TOKEN']
+        content-type: application/json
+        accept: application/json
+        openstack-api-version: 'compute latest, placement latest'
+
+tests:
+
+    - name: list hypervisors
+      GET: $ENVIRON['COMPUTE_SERVICE']/os-hypervisors
+      response_json_paths:
+          $.hypervisors.`len`: 1
+
+    - name: confirm resource provider
+      GET: $ENVIRON['PLACEMENT_SERVICE']/resource_providers/$RESPONSE['$.hypervisors[0].id']
+      response_json_paths:
+          $.uuid: $RESPONSE['$.hypervisors[0].id']
+
+    - name: blargh inventory
+      verbose: True
+      GET: $ENVIRON['PLACEMENT_BASE']$RESPONSE['$.links[?rel=inventories].href']
+      response_json_paths:
+          $.inventories.VCPU.allocation_ratio: 16
+
