@@ -14,6 +14,7 @@ import os
 import unittest
 
 from gabbi import driver
+from gabbi.handlers import jsonhandler
 import six.moves.urllib.parse as urlparse
 from tempest import config
 import tempest.test
@@ -39,23 +40,32 @@ class GenericGabbiTest(tempest.test.BaseTestCase):
     @classmethod
     def resource_setup(cls):
         super(GenericGabbiTest, cls).resource_setup()
-        url, token = cls._get_service_auth()
-        parsed_url = urlparse.urlsplit(url)
-        prefix = parsed_url.path.rstrip('/')  # turn it into a prefix
-        port = 443 if parsed_url.scheme == 'https' else 80
-        host = parsed_url.hostname
-        if parsed_url.port:
-            port = parsed_url.port
+        endpoints, token = cls._get_service_auth()
+
+        # Set test ENVIRON substitutions.
+        for service_type, url in endpoints.items():
+            name = '%s_SERVICE' % service_type.upper()
+            os.environ[name] = url
+            name = '%s_BASE' % service_type.upper()
+            os.environ[name] = '://'.join(urlparse.urlparse(url)[0:2])
+        os.environ['SERVICE_TOKEN'] = token
+        os.environ['IMAGE_REF'] = CONF.compute.image_ref
+        os.environ['FLAVOR_REF'] = CONF.compute.flavor_ref
+        os.environ['FLAVOR_REF_ALT'] = CONF.compute.flavor_ref_alt
+
+        if cls.service_type in endpoints:
+            host = None
+            url = endpoints[cls.service_type]
+        else:
+            host = 'stub'
+            url = None
 
         test_dir = os.path.join(os.path.dirname(__file__), 'gabbits',
                                 cls.service_type)
         cls.tests = driver.build_tests(
-            test_dir, unittest.TestLoader(),
-            host=host, port=port, prefix=prefix,
+            test_dir, unittest.TestLoader(), host=host, url=url,
             test_loader_name='tempest.scenario.%s.%s' % (
                 cls.__name__, cls.service_type))
-
-        os.environ["SERVICE_TOKEN"] = token
 
     @classmethod
     def clear_credentials(cls):
@@ -75,14 +85,20 @@ class GenericGabbiTest(tempest.test.BaseTestCase):
 
     @classmethod
     def _get_service_auth(cls):
-        endpoint_type = 'publicURL'
-
+        interface = 'public'
         auth = cls.os_admin.auth_provider.get_auth()
-        endpoints = [e for e in auth[1]['serviceCatalog']
-                     if e['type'] == cls.service_type]
-        if not endpoints:
-            raise Exception("%s endpoint not found" % cls.service_type)
-        return endpoints[0]['endpoints'][0][endpoint_type], auth[0]
+        token = auth[0]
+        catalog = auth[1]['catalog']
+
+        endpoint_lookup = {}
+        for entry in catalog:
+            service_type = entry['type']
+            endpoints = entry['endpoints']
+            for endpoint in endpoints:
+                if endpoint['interface'] == interface:
+                    endpoint_lookup[service_type] = endpoint['url']
+
+        return endpoint_lookup, token
 
     def test_fake(self):
         # NOTE(sileht): A fake test is needed to have the class loaded
@@ -92,20 +108,17 @@ class GenericGabbiTest(tempest.test.BaseTestCase):
 
 class NovaGabbiTest(GenericGabbiTest):
     credentials = ['admin']
-    # NOTE(cdent): WTF? 'nova' being the thing in service_available?
-    # Boo!
     service_name = 'nova'
     service_type = 'compute'
-
-    @classmethod
-    def resource_setup(cls):
-        super(NovaGabbiTest, cls).resource_setup()
-        # TODO(cdent): not very generic!
-        os.environ['IMAGE_REF'] = CONF.compute.image_ref
-        os.environ['FLAVOR_REF'] = CONF.compute.flavor_ref
 
 
 class GlanceGabbiTest(GenericGabbiTest):
     credentials = ['admin']
     service_name = 'glance'
     service_type = 'image'
+
+
+class PlacementNovaGabbiTest(GenericGabbiTest):
+    credentials = ['admin']
+    service_name = 'nova'
+    service_type = 'multi'
