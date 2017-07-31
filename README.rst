@@ -13,6 +13,7 @@ To experiment with it you need a working tempest installation and
 configuration. I used devstack with::
 
     enable_service tempest
+    INSTALL_TEMPEST=True
 
 in local.conf.
 
@@ -24,14 +25,18 @@ cd into it and do the equivalent of::
 If you are using virtualenvs or need sudo, your form will be
 different.
 
-Go to the tempest directory and run testr limit the test run to
-gabbi related tests::
+Go to the tempest directory (often ``/opt/stack/tempest``) and run
+tempest limiting the test run to gabbi related tests::
 
-    testr run gabbi --subunit |subunit-trace
+    tempest run --regex gabbi
+
+You can be more specific if you like::
+
+    tempest run --regex PlacementNovaGabbi
 
 This will run the tests described by the YAML files in
 ``gabbi_tempest/tests/scenario/gabbits/``. Edit those files and run
-the testr command again for fun and adventure.
+the tempest command again for fun and adventure.
 
 .. _gnocchi: https://review.openstack.org/#/c/301585/
 .. _gabbi: https://gabbi.readthedocs.org/
