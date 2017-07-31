@@ -51,6 +51,7 @@ class GenericGabbiTest(tempest.test.BaseTestCase):
         os.environ['SERVICE_TOKEN'] = token
         os.environ['IMAGE_REF'] = CONF.compute.image_ref
         os.environ['FLAVOR_REF'] = CONF.compute.flavor_ref
+        os.environ['FLAVOR_REF_ALT'] = CONF.compute.flavor_ref_alt
 
         if cls.service_type in endpoints:
             host = None
