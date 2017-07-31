@@ -49,6 +49,8 @@ class GenericGabbiTest(tempest.test.BaseTestCase):
             name = '%s_BASE' % service_type.upper()
             os.environ[name] = '://'.join(urlparse.urlparse(url)[0:2])
         os.environ['SERVICE_TOKEN'] = token
+        os.environ['IMAGE_REF'] = CONF.compute.image_ref
+        os.environ['FLAVOR_REF'] = CONF.compute.flavor_ref
 
         if cls.service_type in endpoints:
             host = None
@@ -105,17 +107,8 @@ class GenericGabbiTest(tempest.test.BaseTestCase):
 
 class NovaGabbiTest(GenericGabbiTest):
     credentials = ['admin']
-    # NOTE(cdent): WTF? 'nova' being the thing in service_available?
-    # Boo!
     service_name = 'nova'
     service_type = 'compute'
-
-    @classmethod
-    def resource_setup(cls):
-        super(NovaGabbiTest, cls).resource_setup()
-        # TODO(cdent): not very generic!
-        os.environ['IMAGE_REF'] = CONF.compute.image_ref
-        os.environ['FLAVOR_REF'] = CONF.compute.flavor_ref
 
 
 class GlanceGabbiTest(GenericGabbiTest):

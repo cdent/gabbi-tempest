@@ -6,6 +6,19 @@ defaults:
         accept: application/json
         openstack-api-version: 'compute latest, placement latest'
 
+# These replace full nodes, there is no YAML interpolation
+# Experimenting with using YAML anchors to avoid repeating long expansions
+# within the tests.
+vars:
+    - &cn1_rp $ENVIRON['PLACEMENT_SERVICE']/resource_providers/$HISTORY['list hypervisors'].$RESPONSE['$.hypervisors[0].id']
+    - &cn1_inv $ENVIRON['PLACEMENT_SERVICE']/resource_providers/$HISTORY['list hypervisors'].$RESPONSE['$.hypervisors[0].id']/inventories
+    - &cn1_alloc $ENVIRON['PLACEMENT_SERVICE']/resource_providers/$HISTORY['list hypervisors'].$RESPONSE['$.hypervisors[0].id']/allocations
+    - &cn1_usages $ENVIRON['PLACEMENT_SERVICE']/resource_providers/$HISTORY['list hypervisors'].$RESPONSE['$.hypervisors[0].id']/usages
+
+    - &s1_id $HISTORY['get server'].$RESPONSE['$.server.id']
+    - &s1_url $ENVIRON['COMPUTE_SERVICE']/servers/$HISTORY['get server'].$RESPONSE['$.server.id']
+    - &s1_alloc $ENVIRON['PLACEMENT_SERVICE']/allocations/$HISTORY['get server'].$RESPONSE['$.server.id']
+
 tests:
 
     - name: list hypervisors
@@ -18,9 +31,50 @@ tests:
       response_json_paths:
           $.uuid: $RESPONSE['$.hypervisors[0].id']
 
-    - name: blargh inventory
-      verbose: True
-      GET: $ENVIRON['PLACEMENT_BASE']$RESPONSE['$.links[?rel=inventories].href']
+    - name: confirm inventory
+      GET: *cn1_inv
       response_json_paths:
           $.inventories.VCPU.allocation_ratio: 16
 
+    - &cn1_zero
+      name: confirm empty allocation
+      GET: *cn1_alloc
+      response_json_paths:
+          $.allocations.`len`: 0
+
+    - name: create server
+      POST: $ENVIRON['COMPUTE_SERVICE']/servers
+      data:
+          server:
+              name: new-server-one
+              networks: auto
+              imageRef: $ENVIRON['IMAGE_REF']
+              flavorRef: $ENVIRON['FLAVOR_REF']
+      status: 202
+
+    - name: get server
+      GET: $LOCATION
+
+    - name: watch allocations
+      verbose: True
+      GET: *s1_alloc
+      poll:
+          count: 4
+          delay: 1
+      response_json_paths:
+          $.allocations.["$HISTORY['list hypervisors'].$RESPONSE['$.hypervisors[0].id']"].resources:
+              VCPU: 1
+              MEMORY_MB: 64
+
+### Clean Up
+
+    - name: delete server
+      DELETE: *s1_url
+      status: 204
+
+    - name: reconfirm empty allocation
+      <<: *cn1_zero
+      verbose: True
+      poll:
+          count: 10
+          delay: 1
