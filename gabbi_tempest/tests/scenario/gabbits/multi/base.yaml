@@ -89,10 +89,7 @@ tests:
       response_json_paths:
           $.server.status: VERIFY_RESIZE
 
-# These next two fail. We are not managing allocations for local
-# resize (yet).
     - name: check for double allocations
-      verbose: True
       GET: *s1_alloc
       poll:
           count: 10
@@ -103,7 +100,6 @@ tests:
               MEMORY_MB: 192
 
     - name: confirm usages pending
-      verbose: True
       GET: *cn1_usages
       response_json_paths:
           $.usages:
@@ -152,5 +148,5 @@ tests:
     - name: reconfirm empty allocation
       <<: *cn1_zero
       poll:
-          count: 10
-          delay: 1
+          count: 12
+          delay: 5
