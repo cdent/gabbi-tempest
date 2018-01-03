@@ -22,27 +22,36 @@ import tempest.test
 CONF = config.CONF
 
 class GenericGabbiTest(tempest.test.BaseTestCase):
-    credentials = []
-    service_name = None
-    service_type = None
-
-    @classmethod
-    def skip_checks(cls):
-        service = cls.service_name
-        super(GenericGabbiTest, cls).skip_checks()
-        if not service:
-            # FIXME(cdent): Hack to work around discoverability
-            # weirdness
-            raise cls.skipException('skipping the base class fake test')
-        if not CONF.service_available.get(service):
-            raise cls.skipException('%s support is required' % service)
+    credentials = ['admin']
 
     @classmethod
     def resource_setup(cls):
         super(GenericGabbiTest, cls).resource_setup()
-        endpoints, token = cls._get_service_auth()
 
+        cls._set_environ()
+
+        # We support all enabled services, so use base hosts.
+        host = 'stub'
+        url = None
+
+        fallback_dir = os.path.join(os.getcwd(), 'gabbits')
+        gabbi_paths = os.environ.get('GABBI_TEMPEST_PATH', fallback_dir)
+
+        top_suite = unittest.TestSuite()
+
+        for test_dir in gabbi_paths.split(':'):
+            dotted_path = test_dir.replace(os.path.sep, '.')
+            inner_suite = driver.build_tests(
+                    test_dir, unittest.TestLoader(), host=host, url=url,
+                    test_loader_name='tempest.scenario%s' % dotted_path)
+            top_suite.addTest(inner_suite)
+
+        cls.tests = top_suite
+
+    @classmethod
+    def _set_environ(cls):
         # Set test ENVIRON substitutions.
+        endpoints, token = cls._get_service_auth()
         for service_type, url in endpoints.items():
             name = '%s_SERVICE' % service_type.upper()
             os.environ[name] = url
@@ -52,20 +61,6 @@ class GenericGabbiTest(tempest.test.BaseTestCase):
         os.environ['IMAGE_REF'] = CONF.compute.image_ref
         os.environ['FLAVOR_REF'] = CONF.compute.flavor_ref
         os.environ['FLAVOR_REF_ALT'] = CONF.compute.flavor_ref_alt
-
-        if cls.service_type in endpoints:
-            host = None
-            url = endpoints[cls.service_type]
-        else:
-            host = 'stub'
-            url = None
-
-        test_dir = os.path.join(os.path.dirname(__file__), 'gabbits',
-                                cls.service_type)
-        cls.tests = driver.build_tests(
-            test_dir, unittest.TestLoader(), host=host, url=url,
-            test_loader_name='tempest.scenario.%s.%s' % (
-                cls.__name__, cls.service_type))
 
     @classmethod
     def clear_credentials(cls):
@@ -104,21 +99,3 @@ class GenericGabbiTest(tempest.test.BaseTestCase):
         # NOTE(sileht): A fake test is needed to have the class loaded
         # by the test runner
         pass
-
-
-class NovaGabbiTest(GenericGabbiTest):
-    credentials = ['admin']
-    service_name = 'nova'
-    service_type = 'compute'
-
-
-class GlanceGabbiTest(GenericGabbiTest):
-    credentials = ['admin']
-    service_name = 'glance'
-    service_type = 'image'
-
-
-class PlacementNovaGabbiTest(GenericGabbiTest):
-    credentials = ['admin']
-    service_name = 'nova'
-    service_type = 'multi'
