@@ -89,7 +89,9 @@ tests:
       response_json_paths:
           $.server.status: VERIFY_RESIZE
 
+    # expected to fail because we don't double this way anymore
     - name: check for double allocations
+      xfail: True
       GET: *s1_alloc
       poll:
           count: 10
