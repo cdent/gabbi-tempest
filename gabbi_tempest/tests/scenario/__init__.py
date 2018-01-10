@@ -58,9 +58,12 @@ class GenericGabbiTest(tempest.test.BaseTestCase):
             name = '%s_BASE' % service_type.upper()
             os.environ[name] = '://'.join(urlparse.urlparse(url)[0:2])
         os.environ['SERVICE_TOKEN'] = token
-        os.environ['IMAGE_REF'] = CONF.compute.image_ref
-        os.environ['FLAVOR_REF'] = CONF.compute.flavor_ref
-        os.environ['FLAVOR_REF_ALT'] = CONF.compute.flavor_ref_alt
+        if CONF.compute.image_ref:
+            os.environ['IMAGE_REF'] = CONF.compute.image_ref
+        if CONF.compute.flavor_ref:
+            os.environ['FLAVOR_REF'] = CONF.compute.flavor_ref
+        if CONF.compute.flavor_ref_alt:
+            os.environ['FLAVOR_REF_ALT'] = CONF.compute.flavor_ref_alt
 
     @classmethod
     def clear_credentials(cls):
